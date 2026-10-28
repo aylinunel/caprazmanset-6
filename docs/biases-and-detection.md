@@ -8,11 +8,11 @@ One reference for the bias concepts and the detection algorithms in two of Aylin
 | What it is | Public site comparing how Turkish outlets headline the same events | Research workspace for evidence-backed framing findings across articles |
 | Detection | Deterministic: a rule-based headline scorer plus corpus statistics | LLM-based: two model passes, then deterministic evidence validation and human review |
 | Unit | Headline (and lede); events of ≥ 5 outlets; outlets | A finding: concept + exact quoted span(s) + attribution |
-| Status | Runs on all collected articles (139,702 at the last build) | Software tested; live inference has **never** been run and no accuracy has been measured |
+| Status | Runs on all collected articles (194,383 in the 6.0 build) | Software tested; live inference has **never** been run and no accuracy has been measured |
 
 **How to read this.** Section 1 is the vocabulary: which biases each system names. Section 2 is detection: what each algorithm does, with thresholds and code. Section 3 compares the two approaches and their limits. Appendix A lists all 116 cognitive concepts in Mercek's taxonomy.
 
-The text describes the code as of the commits above. Numbers marked *last build* come from the 1 Sep – 25 Oct 2026 data; the 6.0 rebuild with the full collection will update them.
+The text describes the code as of the commits above. Numbers marked *6.0 build* come from the 1 Sep – 27 Oct 2026 data (194,383 articles, 33 outlets, 4,362 events).
 
 ---
 
@@ -232,26 +232,26 @@ All text processing in the pipeline uses Turkish-aware lowercasing (`tr_lower`: 
 | Method | Detects | How | Thresholds |
 |---|---|---|---|
 | **Event clustering** | Which headlines report the same story (prerequisite for everything below) | Word 1–2-gram + character 3–5-gram TF-IDF cosine; links only within 48 h; merge strongest links first; two clusters merge only if ≥ 40 % of their cross pairs are linked; ≤ 120 headlines; an event needs ≥ 5 outlets. 140 hand-checked events are locked. | 0.33 / 48 h / 40 % / 120 / 5. Pair F1 0.857 vs the reference events |
-| **Blind spots** (event selection) | Stories one side noticeably under-covered | Ground News' published rule adapted to an unbalanced register: each side's covering outlets are divided by its active outlets; side X is a blind spot if fewer than 10 of its outlets covered it, the other side's normalised share is ≥ 33 %, X's share ≤ (other − 33) × 30/37, **and** a binomial test says X's absence is unlikely by chance (p < 0.10) | `bs_max_side_outlets` 10, `bs_min_other_share` 0.33, `bs_binom_p` 0.10. *Last build:* 47 blind spots (35 left, 12 right) |
-| **Headline–lede gap** (word choice) | Headlines more loaded than the outlet's own lede | Headline score minus lede score, both from §2.1; a gap ≥ 15 points is "headline harder than its lede". Examples are shown only from political headlines inside events. | 15 points. *Last build:* Star 5.1 %, Takvim 4.1 %, A Haber 3.0 % |
-| **Lead–lag** (placement in time) | Who reports first; how fast the other side picks a story up | Each outlet's first headline time per event; leader, delay of the others; cross-bloc pickup share and median delay | *Last build:* left-opened stories reach the right 99.2 % (median 70 min), right-opened reach the left 81.7 % (80 min) |
-| **Agenda similarity** (event selection) | Do outlets placed close together choose the same stories? | Phi correlation of two outlets' event-coverage vectors (unbiased by outlet size); average-linkage clustering on 1 − φ; Mantel test (9,999 permutations) against placement distance | Outlets with ≥ 150 events or ≥ 1,000 political headlines. *Last build:* r = 0.21, p = 0.026 |
-| **Similarity map** | Overall closeness of outlets | Mean of rescaled coverage phi and wording similarity (character n-gram cosine on ≥ 10 shared events); 2-D classical MDS; Mantel test vs placement | ≥ 30 events. *Last build:* r = 0.21, p = 0.048 |
-| **Writing-style axis** (word choice) | Whether framing-structure use lines up with placement | Per-outlet rate of each scorer key in political headlines, standardised; PCA; Spearman ρ of the first component vs placement (permutation p) | *Last build:* ρ = 0.69, p = 0.005 |
-| **Topic mix** (event selection) | Whether outlets weight topics by placement | GSDMM topic model (40 topics) on political headlines, mapped to reference themes; Jensen–Shannon divergence between outlet topic profiles; Mantel test | *Last build:* r = −0.08, p = 0.49 (not related) |
+| **Blind spots** (event selection) | Stories one side noticeably under-covered | Ground News' published rule adapted to an unbalanced register: each side's covering outlets are divided by its active outlets; side X is a blind spot if fewer than 10 of its outlets covered it, the other side's normalised share is ≥ 33 %, X's share ≤ (other − 33) × 30/37, **and** a binomial test says X's absence is unlikely by chance (p < 0.10) | `bs_max_side_outlets` 10, `bs_min_other_share` 0.33, `bs_binom_p` 0.10. *6.0 build:* 42 blind spots (22 left, 20 right) |
+| **Headline–lede gap** (word choice) | Headlines more loaded than the outlet's own lede | Headline score minus lede score, both from §2.1; a gap ≥ 15 points is "headline harder than its lede". Examples are shown only from political headlines inside events. | 15 points. *6.0 build:* Star 4.7 %, Takvim 4.2 %, A Haber 3.0 % (active outlets) |
+| **Lead–lag** (placement in time) | Who reports first; how fast the other side picks a story up | Each outlet's first headline time per event; leader, delay of the others; cross-bloc pickup share and median delay | *6.0 build:* left-opened stories reach the right 98.7 % (median 61 min), right-opened reach the left 81.4 % (101 min) |
+| **Agenda similarity** (event selection) | Do outlets placed close together choose the same stories? | Phi correlation of two outlets' event-coverage vectors (unbiased by outlet size); average-linkage clustering on 1 − φ; Mantel test (9,999 permutations) against placement distance | Outlets with ≥ 150 events or ≥ 1,000 political headlines. *6.0 build:* r = 0.03, p = 0.74 (not related) |
+| **Similarity map** | Overall closeness of outlets | Mean of rescaled coverage phi and wording similarity (character n-gram cosine on ≥ 10 shared events); 2-D classical MDS; Mantel test vs placement | ≥ 30 events. *6.0 build:* r = 0.19, p = 0.075 (not significant) |
+| **Writing-style axis** (word choice) | Whether framing-structure use lines up with placement | Per-outlet rate of each scorer key in political headlines, standardised; PCA; Spearman ρ of the first component vs placement (permutation p) | *6.0 build:* ρ = 0.71, p = 0.002 |
+| **Topic mix** (event selection) | Whether outlets weight topics by placement | GSDMM topic model (40 topics) on political headlines, mapped to reference themes; Jensen–Shannon divergence between outlet topic profiles; Mantel test | *6.0 build:* r = −0.06, p = 0.62 (not related) |
 
 The p-values are reproducible: outlet order is sorted before every permutation test, and the build is byte-identical across runs.
 
 ### 2.4 Çapraz Manşet validation summary
 
-| Check | Result (*last build*) |
+| Check | Result (*6.0 build*) |
 |---|---|
 | Shared scorer vs stored reference scores | 22,213 / 22,213 identical |
 | Section classifier, 5-fold CV | 99.1 % accuracy (macro-F1 0.79) |
 | Political / not political classifier, 5-fold CV | 99.4 % |
-| Event clustering vs reference events (pairwise) | Precision 0.853, recall 0.861, F1 0.857 |
+| Event clustering vs reference events (pairwise) | Precision 0.851, recall 0.839, F1 0.845 |
 | Event topics, 5-fold CV | Micro-F1 0.755 |
-| Topic coherence (NPMI) | GSDMM 0.121 vs LDA −0.25 |
+| Topic coherence (NPMI) | GSDMM 0.145 vs LDA −0.24 |
 
 The classifiers learn labels that were themselves produced by an earlier classifier, so they are not independent human annotation. No human-coded sample exists for the headline scorer.
 
@@ -334,7 +334,7 @@ It also applies a **conservative gate**: `contextual_omission`, `one_sided_sourc
 | Context, negation, modality | Not handled | Asked for in the prompt; tested by CheckList cases |
 | Cross-outlet comparison | Built in (events, blind spots, gaps, similarity) | Per event, from the supplied texts |
 | Reproducibility | Byte-identical builds; every score is explainable | Model-dependent; fingerprinted by model, prompt, taxonomy and inputs |
-| Cost and scale | Scores all 139,702 articles in one Node process | Two paid model calls per analysis; one event at a time |
+| Cost and scale | Scores all 194,383 articles in one Node process | Two paid model calls per analysis; one event at a time |
 | Validation | Against its own reference output and the reference events; no human-coded sample | Software contract only; no accuracy yet |
 | Main risk | False positives from context-free word lists; false negatives for anything outside the lexicon | Model overreach or misses; unvalidated until an adjudicated benchmark exists |
 
